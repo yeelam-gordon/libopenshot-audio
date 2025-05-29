@@ -107,7 +107,7 @@ cleanup_builders:
   stage: cleanup-builders
   except:
     - tags
-  tags: [gitlab-server]
+  tags: [gitlab]
   script:
     - receive-ci-sqs linux
     - receive-ci-sqs windows
