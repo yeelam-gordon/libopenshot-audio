@@ -1,10 +1,23 @@
 stages:
+  - init-builders
   - build-libopenshot-audio
+  - cleanup-builders
   - trigger-libopenshot
 
 variables:
   GIT_LOG_FORMAT: "- %h %ad %s [%aN]"
 
+# INIT BUILDERS: Add to both queues in one job
+init_builders:
+  stage: init-builders
+  except:
+    - tags
+  tags: [gitlab]
+  script:
+    - send-ci-sqs linux
+    - send-ci-sqs windows
+
+# BUILD STAGE: All build jobs depend on init_builders
 linux-builder:
   stage: build-libopenshot-audio
   artifacts:
@@ -12,7 +25,8 @@ linux-builder:
     paths:
     - build/install-x64/*
   script:
-    - mkdir -p build; cd build;
+    - mkdir -p build
+    - cd build
     - cmake -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -D"CMAKE_INSTALL_PREFIX:PATH=install-x64" -D"CMAKE_BUILD_TYPE:STRING=Release" ../
     - make -j 2
     - make install
@@ -20,11 +34,9 @@ linux-builder:
     - PROJECT_SO=$(grep -E '^set\(PROJECT_SO_VERSION (.*)' ../CMakeLists.txt | awk '{print $2}' | tr -d ')')
     - echo -e "CI_PROJECT_NAME:$CI_PROJECT_NAME\nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME\nCI_COMMIT_SHA:$CI_COMMIT_SHA\nCI_JOB_ID:$CI_JOB_ID\nCI_PIPELINE_ID:$CI_PIPELINE_ID\nVERSION:$PROJECT_VERSION\nSO:$PROJECT_SO" > "install-x64/share/$CI_PROJECT_NAME.env"
     - git log $(git describe --tags --abbrev=0 @^)..@ --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "install-x64/share/$CI_PROJECT_NAME.log"
-  when: always
   except:
-  - tags
-  tags:
-    - linux-focal
+    - tags
+  tags: [linux-focal]
 
 mac-builder:
   stage: build-libopenshot-audio
@@ -41,11 +53,9 @@ mac-builder:
     - PROJECT_SO=$(grep -E '^set\(PROJECT_SO_VERSION (.*)' CMakeLists.txt | awk '{print $2}' | tr -d ')')
     - echo -e "CI_PROJECT_NAME:$CI_PROJECT_NAME\nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME\nCI_COMMIT_SHA:$CI_COMMIT_SHA\nCI_JOB_ID:$CI_JOB_ID\nCI_PIPELINE_ID:$CI_PIPELINE_ID\nVERSION:$PROJECT_VERSION\nSO:$PROJECT_SO" > "build/install-x64/share/$CI_PROJECT_NAME.env"
     - git log $(git describe --tags --abbrev=0 @^)..@ --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "build/install-x64/share/$CI_PROJECT_NAME.log"
-  when: always
   except:
-  - tags
-  tags:
-    - mac
+    - tags
+  tags: [mac]
 
 windows-builder-x64:
   stage: build-libopenshot-audio
@@ -65,11 +75,9 @@ windows-builder-x64:
     - New-Item -path "build/install-x64/share/" -Name "$CI_PROJECT_NAME.env" -Value "CI_PROJECT_NAME:$CI_PROJECT_NAME`nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME`nCI_COMMIT_SHA:$CI_COMMIT_SHA`nCI_JOB_ID:$CI_JOB_ID`nCI_PIPELINE_ID:$CI_PIPELINE_ID`nVERSION:$PROJECT_VERSION`nSO:$PROJECT_SO" -ItemType file -force
     - $PREV_GIT_LABEL=(git describe --tags --abbrev=0 '@^')
     - git log "$PREV_GIT_LABEL..@" --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "build/install-x64/share/$CI_PROJECT_NAME.log"
-  when: always
   except:
-  - tags
-  tags:
-    - windows
+    - tags
+  tags: [windows]
 
 windows-builder-x86:
   stage: build-libopenshot-audio
@@ -89,12 +97,12 @@ windows-builder-x86:
     - New-Item -path "build/install-x86/share/" -Name "$CI_PROJECT_NAME.env" -Value "CI_PROJECT_NAME:$CI_PROJECT_NAME`nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME`nCI_COMMIT_SHA:$CI_COMMIT_SHA`nCI_JOB_ID:$CI_JOB_ID`nCI_PIPELINE_ID:$CI_PIPELINE_ID`nVERSION:$PROJECT_VERSION`nSO:$PROJECT_SO" -ItemType file -force
     - $PREV_GIT_LABEL=(git describe --tags --abbrev=0 '@^')
     - git log "$PREV_GIT_LABEL..@" --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "build/install-x86/share/$CI_PROJECT_NAME.log"
-  when: always
   except:
   - tags
   tags:
     - windows
 
+# TRIGGER: Only runs if all previous succeeded
 trigger-pipeline:
   stage: trigger-libopenshot
   script:
@@ -103,5 +111,4 @@ trigger-pipeline:
   dependencies: []
   except:
   - tags
-  tags:
-    - linux
+  tags: [gitlab]
