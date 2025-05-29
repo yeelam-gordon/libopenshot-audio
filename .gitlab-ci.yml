@@ -1,12 +1,28 @@
 stages:
+  - init-builders
   - build-libopenshot-audio
   - trigger-libopenshot
 
 variables:
   GIT_LOG_FORMAT: "- %h %ad %s [%aN]"
 
+init_linux_builder:
+  stage: init-builders
+  tags:
+    - gitlab-server
+  script:
+    - send-ci-sqs linux
+
+init_windows_builder:
+  stage: init-builders
+  tags:
+    - gitlab-server
+  script:
+    - send-ci-sqs windows
+
 linux-builder:
   stage: build-libopenshot-audio
+  needs: [init_linux_builder]
   artifacts:
     expire_in: 6 months
     paths:
@@ -20,7 +36,9 @@ linux-builder:
     - PROJECT_SO=$(grep -E '^set\(PROJECT_SO_VERSION (.*)' ../CMakeLists.txt | awk '{print $2}' | tr -d ')')
     - echo -e "CI_PROJECT_NAME:$CI_PROJECT_NAME\nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME\nCI_COMMIT_SHA:$CI_COMMIT_SHA\nCI_JOB_ID:$CI_JOB_ID\nCI_PIPELINE_ID:$CI_PIPELINE_ID\nVERSION:$PROJECT_VERSION\nSO:$PROJECT_SO" > "install-x64/share/$CI_PROJECT_NAME.env"
     - git log $(git describe --tags --abbrev=0 @^)..@ --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "install-x64/share/$CI_PROJECT_NAME.log"
-  when: always
+  after_script:
+    - if [ "$CI" = "true" ]; then sudo shutdown -h now; fi
+  when: on_success
   except:
   - tags
   tags:
@@ -49,6 +67,7 @@ mac-builder:
 
 windows-builder-x64:
   stage: build-libopenshot-audio
+  needs: [init_windows_builder]
   artifacts:
     expire_in: 6 months
     paths:
@@ -65,7 +84,9 @@ windows-builder-x64:
     - New-Item -path "build/install-x64/share/" -Name "$CI_PROJECT_NAME.env" -Value "CI_PROJECT_NAME:$CI_PROJECT_NAME`nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME`nCI_COMMIT_SHA:$CI_COMMIT_SHA`nCI_JOB_ID:$CI_JOB_ID`nCI_PIPELINE_ID:$CI_PIPELINE_ID`nVERSION:$PROJECT_VERSION`nSO:$PROJECT_SO" -ItemType file -force
     - $PREV_GIT_LABEL=(git describe --tags --abbrev=0 '@^')
     - git log "$PREV_GIT_LABEL..@" --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "build/install-x64/share/$CI_PROJECT_NAME.log"
-  when: always
+  after_script:
+    - if ($env:CI -eq "true") { shutdown /s /t 0 }
+  when: on_success
   except:
   - tags
   tags:
@@ -73,6 +94,7 @@ windows-builder-x64:
 
 windows-builder-x86:
   stage: build-libopenshot-audio
+  needs: [init_windows_builder]
   artifacts:
     expire_in: 6 months
     paths:
@@ -89,7 +111,9 @@ windows-builder-x86:
     - New-Item -path "build/install-x86/share/" -Name "$CI_PROJECT_NAME.env" -Value "CI_PROJECT_NAME:$CI_PROJECT_NAME`nCI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME`nCI_COMMIT_SHA:$CI_COMMIT_SHA`nCI_JOB_ID:$CI_JOB_ID`nCI_PIPELINE_ID:$CI_PIPELINE_ID`nVERSION:$PROJECT_VERSION`nSO:$PROJECT_SO" -ItemType file -force
     - $PREV_GIT_LABEL=(git describe --tags --abbrev=0 '@^')
     - git log "$PREV_GIT_LABEL..@" --oneline --pretty=format:"- %C(auto,yellow)%h%C(auto,magenta)% %C(auto,blue)%>(12,trunc)%ad %C(auto,green)%<(25,trunc)%aN%C(auto,reset)%s%C(auto,red)% gD% D" --date=short > "build/install-x86/share/$CI_PROJECT_NAME.log"
-  when: always
+  after_script:
+    - if ($env:CI -eq "true") { shutdown /s /t 0 }
+  when: on_success
   except:
   - tags
   tags:
