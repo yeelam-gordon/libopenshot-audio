@@ -102,19 +102,6 @@ windows-builder-x86:
   tags:
     - windows
 
-# CLEANUP: Always run, removes both messages, then sleeps
-cleanup_builders:
-  stage: cleanup-builders
-  except:
-    - tags
-  tags: [gitlab]
-  script:
-    - receive-ci-sqs linux
-    - receive-ci-sqs windows
-    - echo "Pausing for ASG to scale-down..."
-    - sleep 60
-  when: always
-
 # TRIGGER: Only runs if all previous succeeded
 trigger-pipeline:
   stage: trigger-libopenshot
