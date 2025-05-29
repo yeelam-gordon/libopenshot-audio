@@ -12,7 +12,7 @@ init_builders:
   stage: init-builders
   except:
     - tags
-  tags: [gitlab-server]
+  tags: [gitlab]
   script:
     - send-ci-sqs linux
     - send-ci-sqs windows
@@ -124,4 +124,4 @@ trigger-pipeline:
   dependencies: []
   except:
   - tags
-  tags: [gitlab-server]
+  tags: [gitlab]
