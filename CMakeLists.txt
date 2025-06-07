@@ -231,8 +231,10 @@ endif()
 
 if(APPLE)
   set_target_properties(openshot-audio PROPERTIES
-    INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
-    MACOSX_RPATH OFF
+          INSTALL_NAME_DIR "@rpath"
+          BUILD_WITH_INSTALL_RPATH ON
+          INSTALL_RPATH_USE_LINK_PATH ON
+          INSTALL_RPATH "@loader_path/../lib;@executable_path/../lib"
   )
   target_link_libraries(openshot-audio PRIVATE
     "-framework Carbon"
