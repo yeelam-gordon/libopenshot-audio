@@ -254,6 +254,22 @@ if(APPLE)
     -flax-vector-conversions)
 endif()
 
+
+if(ANDROID)
+  if(DEFINED ANDROID_NDK)
+    set(_android_ndk "${ANDROID_NDK}")
+  elseif(DEFINED CMAKE_ANDROID_NDK)
+    set(_android_ndk "${CMAKE_ANDROID_NDK}")
+  endif()
+  if(_android_ndk)
+    target_include_directories(openshot-audio PRIVATE
+      "${_android_ndk}/sources/android/cpufeatures")
+    target_sources(openshot-audio PRIVATE
+      "${_android_ndk}/sources/android/cpufeatures/cpu-features.c")
+  endif()
+  target_link_libraries(openshot-audio PUBLIC log)
+endif()
+
 # ALSA (Linux only)
 if(UNIX AND NOT APPLE)
   set(NEED_ALSA TRUE)
