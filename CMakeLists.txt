@@ -40,7 +40,7 @@ For more information, please visit <http://www.openshot.org/>.
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
 
 ################ PROJECT VERSION ####################
-set(PROJECT_VERSION_FULL "0.5.0")
+set(PROJECT_VERSION_FULL "0.6.0")
 set(PROJECT_SO_VERSION 10)
 
 #### Set C++ standard level
@@ -252,6 +252,22 @@ if(APPLE)
   )
   target_compile_options(openshot-audio PRIVATE
     -flax-vector-conversions)
+endif()
+
+
+if(ANDROID)
+  if(DEFINED ANDROID_NDK)
+    set(_android_ndk "${ANDROID_NDK}")
+  elseif(DEFINED CMAKE_ANDROID_NDK)
+    set(_android_ndk "${CMAKE_ANDROID_NDK}")
+  endif()
+  if(_android_ndk)
+    target_include_directories(openshot-audio PRIVATE
+      "${_android_ndk}/sources/android/cpufeatures")
+    target_sources(openshot-audio PRIVATE
+      "${_android_ndk}/sources/android/cpufeatures/cpu-features.c")
+  endif()
+  target_link_libraries(openshot-audio PUBLIC log)
 endif()
 
 # ALSA (Linux only)
